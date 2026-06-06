@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create HealthFog Doctor Account</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body class="login-body">
+    <main class="login-shell">
+        <section class="login-panel">
+            <div class="brand-mark" aria-hidden="true">
+                <span></span>
+            </div>
+            <p class="eyebrow">HealthFog Master Node</p>
+            <h1>Create Doctor Account</h1>
+            <p class="login-copy">Register a doctor to update patient records and request fog-worker predictions from this master node.</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="notice {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form class="login-form" method="post">
+                <label>
+                    Doctor name
+                    <input name="full_name" autocomplete="name" value="{{ form_data.full_name }}" required>
+                </label>
+                <label>
+                    Username
+                    <input name="username" autocomplete="username" value="{{ form_data.username }}" placeholder="dr_singh" required>
+                </label>
+                <label>
+                    Password
+                    <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+                </label>
+                <label>
+                    Confirm password
+                    <input name="password_confirmation" type="password" autocomplete="new-password" minlength="8" required>
+                </label>
+                <button type="submit">Create Account</button>
+            </form>
+            <p class="auth-switch">Already registered? <a href="{{ url_for('login') }}">Log in</a></p>
+        </section>
+        <aside class="login-context">
+            <div class="pulse-line"></div>
+            <p>Doctor access</p>
+            <strong>Each account opens the patient dashboard on the master node.</strong>
+            <dl>
+                <div>
+                    <dt>Password</dt>
+                    <dd>Hashed storage</dd>
+                </div>
+                <div>
+                    <dt>Session</dt>
+                    <dd>Doctor workspace</dd>
+                </div>
+            </dl>
+        </aside>
+    </main>
+</body>
+</html>

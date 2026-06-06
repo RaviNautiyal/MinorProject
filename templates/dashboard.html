@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HealthFog Patient Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">HealthFog Master Node</p>
+            <h1>Patient Risk Dashboard</h1>
+        </div>
+        <div class="top-actions">
+            <span class="doctor-chip">Doctor: {{ doctor }}</span>
+            <form method="post" action="{{ url_for('logout') }}">
+                <button class="quiet-button" type="submit">Log out</button>
+            </form>
+        </div>
+    </header>
+
+    <main class="dashboard-shell">
+        <aside class="rail">
+            <section class="surface worker-surface">
+                <div class="section-head">
+                    <h2>Fog Workers</h2>
+                    <div class="worker-tools">
+                        <span id="worker-ready-count">{{ workers|selectattr('available')|list|length }}/{{ workers|length }} reachable</span>
+                        <span class="live-pill" id="worker-live-state" aria-live="polite">Live</span>
+                    </div>
+                </div>
+                <div class="worker-list">
+                    {% for worker in workers %}
+                        <article class="worker-row {{ 'ready' if worker.available else 'offline' }}" data-worker="{{ worker.address }}">
+                            <span class="status-dot"></span>
+                            <div>
+                                <strong>Worker {{ loop.index }}</strong>
+                                <small>{{ worker.address }}</small>
+                            </div>
+                            <b class="worker-state">
+                                {% if worker.available and worker.load is not none %}
+                                    {{ '%.2f'|format(worker.load) }}
+                                {% elif worker.available %}
+                                    {{ 'Reachable' if worker.probe == 'predict' else 'Ready' }}
+                                {% else %}
+                                    Offline
+                                {% endif %}
+                            </b>
+                            <dl class="worker-metrics">
+                                <div>
+                                    <dt>Probe</dt>
+                                    <dd class="metric-probe">{{ worker.probe }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Latency</dt>
+                                    <dd class="metric-latency">{{ '%.1f ms'|format(worker.latency_ms) if worker.latency_ms is not none else 'n/a' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Requests</dt>
+                                    <dd class="metric-requests">{{ worker.active_requests if worker.active_requests is not none else 'n/a' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Served</dt>
+                                    <dd class="metric-served">{{ worker.served }}</dd>
+                                </div>
+                            </dl>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="surface monitor-surface">
+                <div class="section-head">
+                    <h2>Route Trace</h2>
+                    <span>Master broker</span>
+                </div>
+                <div class="fog-trace">
+                    <strong>Doctor</strong>
+                    <i></i>
+                    <strong>Master</strong>
+                    <i></i>
+                    <strong>{{ prediction.worker|replace('http://', '') if prediction and prediction.worker else 'Ready worker' }}</strong>
+                </div>
+                <div class="event-list">
+                    {% for event in route_events %}
+                        <article>
+                            <b>{{ event.status|title }}</b>
+                            <span>{{ event.worker|replace('http://', '') }}</span>
+                            <small>{{ event.created_at }}{{ ' | ' ~ ('%.1f ms'|format(event.latency_ms)) if event.latency_ms is not none else '' }}</small>
+                        </article>
+                    {% else %}
+                        <p class="empty-copy">Prediction routing events will appear here.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+        </aside>
+
+        <section class="workspace">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="notice {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if prediction %}
+                <section class="prediction-banner {{ 'clear' if prediction.ok and 'No' in prediction.result else 'watch' }}">
+                    <div>
+                        <p>Latest Prediction</p>
+                        <h2>{{ prediction.result }}</h2>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Probability</dt>
+                            <dd>{{ '%.3f'|format(prediction.probability) if prediction.probability is not none else 'Pending' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Worker</dt>
+                            <dd>{{ prediction.worker or 'Awaiting worker' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Round Trip</dt>
+                            <dd>{{ '%.1f ms'|format(prediction.latency_ms) if prediction.latency_ms is defined else 'Pending' }}</dd>
+                        </div>
+                    </dl>
+                </section>
+            {% endif %}
+
+            <form class="record-form" method="post">
+                <div id="ready-worker-inputs" hidden>
+                    {% for worker in workers if worker.available %}
+                        <input name="ready_workers" type="hidden" value="{{ worker.address }}">
+                    {% endfor %}
+                </div>
+                <section class="surface form-section">
+                    <div class="section-head title-row">
+                        <div>
+                            <p class="eyebrow">Patient Record</p>
+                            <h2>Visit Update</h2>
+                        </div>
+                        <span>Master-node record</span>
+                    </div>
+                    <div class="field-grid patient-grid">
+                        <label>
+                            Patient ID
+                            <input name="patient_id" value="{{ form_data.get('patient_id', '') }}" placeholder="HF-1042" required>
+                        </label>
+                        <label>
+                            Full name
+                            <input name="full_name" value="{{ form_data.get('full_name', '') }}" placeholder="Patient name" required>
+                        </label>
+                        <label>
+                            Phone
+                            <input name="phone" value="{{ form_data.get('phone', '') }}" placeholder="Optional contact">
+                        </label>
+                        <label>
+                            Age
+                            <input name="age" type="number" min="1" max="130" value="{{ form_data.get('age', '') }}" required>
+                        </label>
+                    </div>
+                    <label class="notes-field">
+                        Doctor notes
+                        <textarea name="doctor_notes" rows="3" placeholder="Symptoms, medication context, follow-up notes">{{ form_data.get('doctor_notes', '') }}</textarea>
+                    </label>
+                </section>
+
+                <section class="surface form-section">
+                    <div class="section-head title-row">
+                        <div>
+                            <p class="eyebrow">Clinical Inputs</p>
+                            <h2>Heart Risk Parameters</h2>
+                        </div>
+                        <span>Worker payload</span>
+                    </div>
+                    <div class="field-grid clinical-grid">
+                        <label>
+                            Gender
+                            <select name="sex">
+                                <option {{ 'selected' if form_data.get('sex', 'Male') == 'Male' }}>Male</option>
+                                <option {{ 'selected' if form_data.get('sex') == 'Female' }}>Female</option>
+                            </select>
+                        </label>
+                        <label>
+                            Chest pain type
+                            <select name="cp">
+                                {% for value in ['typical angina', 'atypical angina', 'non-anginal', 'asymptomatic'] %}
+                                    <option {{ 'selected' if form_data.get('cp', 'typical angina') == value }}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Resting blood pressure
+                            <input name="trestbps" type="number" min="0" value="{{ form_data.get('trestbps', '') }}" required>
+                        </label>
+                        <label>
+                            Cholesterol
+                            <input name="chol" type="number" min="0" value="{{ form_data.get('chol', '') }}" required>
+                        </label>
+                        <label>
+                            Fasting blood sugar
+                            <select name="fbs">
+                                <option value="False" {{ 'selected' if form_data.get('fbs', 'False') == 'False' }}>At most 120 mg/dl</option>
+                                <option value="True" {{ 'selected' if form_data.get('fbs') == 'True' }}>Above 120 mg/dl</option>
+                            </select>
+                        </label>
+                        <label>
+                            Resting ECG
+                            <select name="restecg">
+                                {% for value in ['normal', 'st-t abnormality', 'lv hypertrophy'] %}
+                                    <option {{ 'selected' if form_data.get('restecg', 'normal') == value }}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Maximum heart rate
+                            <input name="thalch" type="number" min="0" value="{{ form_data.get('thalch', '') }}" required>
+                        </label>
+                        <label>
+                            Exercise angina
+                            <select name="exang">
+                                <option value="False" {{ 'selected' if form_data.get('exang', 'False') == 'False' }}>No</option>
+                                <option value="True" {{ 'selected' if form_data.get('exang') == 'True' }}>Yes</option>
+                            </select>
+                        </label>
+                        <label>
+                            ST depression
+                            <input name="oldpeak" type="number" min="0" step="0.1" value="{{ form_data.get('oldpeak', '') }}" required>
+                        </label>
+                        <label>
+                            Exercise ECG slope
+                            <select name="slope">
+                                {% for value in ['upsloping', 'flat', 'downsloping'] %}
+                                    <option {{ 'selected' if form_data.get('slope', 'upsloping') == value }}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Major vessels
+                            <input name="ca" type="number" min="0" max="3" value="{{ form_data.get('ca', '') }}" required>
+                        </label>
+                        <label>
+                            Thalassemia test
+                            <select name="thal">
+                                {% for value in ['normal', 'fixed defect', 'reversible defect'] %}
+                                    <option {{ 'selected' if form_data.get('thal', 'normal') == value }}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <footer class="form-actions">
+                    <button class="quiet-button" formaction="{{ url_for('store_record') }}" type="submit">Save Record</button>
+                    <button class="primary-button" formaction="{{ url_for('predict') }}" type="submit">Save and Predict</button>
+                </footer>
+            </form>
+
+            <section class="surface records-surface workspace-records">
+                <div class="section-head">
+                    <h2>Recent Records</h2>
+                    <span>{{ records|length }} shown</span>
+                </div>
+                {% if records %}
+                    <nav class="record-list" aria-label="Recent patient records">
+                        {% for record in records %}
+                            <a href="{{ url_for('dashboard', patient_id=record.patient_id) }}">
+                                <strong>{{ record.full_name }}</strong>
+                                <small>{{ record.patient_id }} | {{ record.updated_at }}</small>
+                                <em>{{ record.last_result or 'Saved without prediction' }}</em>
+                            </a>
+                        {% endfor %}
+                    </nav>
+                {% else %}
+                    <p class="empty-copy">Saved patient records will appear here.</p>
+                {% endif %}
+            </section>
+        </section>
+    </main>
+    <script>
+        const readyWorkerInputs = document.getElementById("ready-worker-inputs");
+        const readyWorkerCount = document.getElementById("worker-ready-count");
+        const workerLiveState = document.getElementById("worker-live-state");
+        let workerFallbackTimer = null;
+
+        function workerMetric(worker, key, fallback = "n/a") {
+            return worker[key] === null || worker[key] === undefined ? fallback : worker[key];
+        }
+
+        function updateWorkerPanel(payload) {
+            const workers = payload.workers || [];
+            readyWorkerCount.textContent = `${workers.filter((worker) => worker.available).length}/${workers.length} reachable`;
+            readyWorkerInputs.replaceChildren();
+            workers.forEach((worker) => {
+                const row = document.querySelector(`[data-worker="${worker.address}"]`);
+                if (!row) return;
+                row.classList.toggle("ready", worker.available);
+                row.classList.toggle("offline", !worker.available);
+                row.querySelector(".worker-state").textContent = worker.available && worker.load !== null
+                    ? Number(worker.load).toFixed(2)
+                    : worker.available && worker.probe === "predict" ? "Reachable" : worker.available ? "Ready" : "Offline";
+                row.querySelector(".metric-probe").textContent = workerMetric(worker, "probe");
+                row.querySelector(".metric-latency").textContent = worker.latency_ms === null
+                    ? "n/a"
+                    : `${Number(worker.latency_ms).toFixed(1)} ms`;
+                row.querySelector(".metric-requests").textContent = workerMetric(worker, "active_requests");
+                row.querySelector(".metric-served").textContent = workerMetric(worker, "served", "0");
+                if (worker.available) {
+                    const input = document.createElement("input");
+                    input.name = "ready_workers";
+                    input.type = "hidden";
+                    input.value = worker.address;
+                    readyWorkerInputs.appendChild(input);
+                }
+            });
+        }
+
+        async function pollWorkerPanel() {
+            try {
+                const response = await fetch("{{ url_for('worker_status_api') }}", {
+                    headers: { "Accept": "application/json" }
+                });
+                if (!response.ok) return;
+                updateWorkerPanel(await response.json());
+            } catch (error) {
+                workerLiveState.textContent = "Retrying";
+            }
+        }
+
+        function startWorkerPolling() {
+            if (workerFallbackTimer) return;
+            workerLiveState.textContent = "Polling";
+            pollWorkerPanel();
+            workerFallbackTimer = window.setInterval(pollWorkerPanel, 3000);
+        }
+
+        if (window.EventSource) {
+            const workerStream = new EventSource("{{ url_for('worker_status_stream') }}");
+            workerStream.onmessage = (event) => {
+                workerLiveState.textContent = "Live";
+                updateWorkerPanel(JSON.parse(event.data));
+            };
+            workerStream.onerror = () => {
+                workerStream.close();
+                startWorkerPolling();
+            };
+        } else {
+            startWorkerPolling();
+        }
+    </script>
+</body>
+</html>

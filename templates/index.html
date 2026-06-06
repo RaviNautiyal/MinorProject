@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Heart Disease Risk Predictor</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+
+        body{
+            background:#f4f7fb;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        .main-container{
+            max-width:1100px;
+            margin:auto;
+            padding:40px 20px;
+        }
+
+        .app-title{
+            font-weight:700;
+            color:#1f2d3d;
+        }
+
+        .card{
+            border:none;
+            border-radius:18px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        .section-title{
+            font-weight:600;
+            color:#2c3e50;
+            margin-bottom:20px;
+            border-left:4px solid #0d6efd;
+            padding-left:10px;
+        }
+
+        label{
+            font-weight:500;
+            margin-bottom:5px;
+            color:#34495e;
+        }
+
+        .form-control, .form-select{
+            border-radius:10px;
+            padding:10px;
+        }
+
+        .form-control:focus, .form-select:focus{
+            border-color:#0d6efd;
+            box-shadow:none;
+        }
+
+        .btn-predict{
+            background:#0d6efd;
+            border:none;
+            padding:14px;
+            border-radius:12px;
+            font-weight:600;
+            width:100%;
+            font-size:18px;
+        }
+
+        .btn-predict:hover{
+            background:#0b5ed7;
+        }
+
+        .result-box{
+            border-radius:15px;
+            padding:25px;
+            text-align:center;
+            margin-top:25px;
+        }
+
+        .low-risk{
+            background:#e8f8f5;
+            color:#1e8449;
+        }
+
+        .high-risk{
+            background:#fdecea;
+            color:#c0392b;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="main-container">
+
+    <div class="text-center mb-4">
+        <h2 class="app-title">Heart Disease Risk Predictor</h2>
+        <p class="text-muted">Fog-Based Smart Healthcare System</p>
+    </div>
+
+    <form action="/predict" method="POST">
+
+        <div class="card p-4 mb-4">
+            <h5 class="section-title">Basic Information</h5>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>Age</label>
+                    <input type="number" name="age" class="form-control" required>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Gender</label>
+                    <select name="sex" class="form-select">
+                        <option>Male</option>
+                        <option>Female</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="card p-4 mb-4">
+            <h5 class="section-title">Medical Parameters</h5>
+
+            <div class="mb-3">
+                <label>Chest Pain Type</label>
+                <select name="cp" class="form-select">
+                    <option>typical angina</option>
+                    <option>atypical angina</option>
+                    <option>non-anginal</option>
+                    <option>asymptomatic</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>Resting Blood Pressure</label>
+                    <input type="number" name="trestbps" class="form-control" required>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Cholesterol</label>
+                    <input type="number" name="chol" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label>Fasting Blood Sugar > 120 mg/dl?</label>
+                <select name="fbs" class="form-select">
+                    <option value="False">No</option>
+                    <option value="True">Yes</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label>Resting ECG Result</label>
+                <select name="restecg" class="form-select">
+                    <option>normal</option>
+                    <option>st-t abnormality</option>
+                    <option>lv hypertrophy</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label>Maximum Heart Rate Achieved</label>
+                <input type="number" name="thalch" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label>Chest Pain During Exercise?</label>
+                <select name="exang" class="form-select">
+                    <option value="False">No</option>
+                    <option value="True">Yes</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label>ST Depression (Oldpeak)</label>
+                <input type="number" step="0.1" name="oldpeak" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label>Exercise ECG Slope</label>
+                <select name="slope" class="form-select">
+                    <option>upsloping</option>
+                    <option>flat</option>
+                    <option>downsloping</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label>Number of Major Vessels (0–3)</label>
+                <input type="number" name="ca" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label>Thalassemia Test Result</label>
+                <select name="thal" class="form-select">
+                    <option>normal</option>
+                    <option>fixed defect</option>
+                    <option>reversible defect</option>
+                </select>
+            </div>
+
+        </div>
+
+        <button class="btn btn-predict">Predict Heart Risk</button>
+
+    </form>
+
+    {% if prediction_text %}
+    <div class="result-box {% if 'No Heart Disease' in prediction_text %}low-risk{% else %}high-risk{% endif %}">
+        <h4>Prediction Result</h4>
+        <h3>{{ prediction_text }}</h3>
+    </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

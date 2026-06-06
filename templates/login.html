@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HealthFog Doctor Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body class="login-body">
+    <main class="login-shell">
+        <section class="login-panel">
+            <div class="brand-mark" aria-hidden="true">
+                <span></span>
+            </div>
+            <p class="eyebrow">HealthFog Master Node</p>
+            <h1>Doctor Dashboard</h1>
+            <p class="login-copy">Sign in to update patient records and route heart-risk predictions to available fog workers.</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="notice {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form class="login-form" method="post">
+                <label>
+                    Doctor username
+                    <input name="username" autocomplete="username" value="{{ username }}" placeholder="doctor" required>
+                </label>
+                <label>
+                    Password
+                    <input name="password" type="password" autocomplete="current-password" required>
+                </label>
+                <button type="submit">Open Dashboard</button>
+            </form>
+            <p class="auth-switch">New doctor? <a href="{{ url_for('signup') }}">Create an account</a></p>
+        </section>
+        <aside class="login-context">
+            <div class="pulse-line"></div>
+            <p>Fog prediction broker</p>
+            <strong>Patient updates stay on the master node while inference work is sent to the worker layer.</strong>
+            <dl>
+                <div>
+                    <dt>Role</dt>
+                    <dd>Doctor workspace</dd>
+                </div>
+                <div>
+                    <dt>Flow</dt>
+                    <dd>Record, route, review</dd>
+                </div>
+            </dl>
+        </aside>
+    </main>
+</body>
+</html>
