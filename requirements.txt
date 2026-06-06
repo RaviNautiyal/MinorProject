@@ -33,3 +33,5 @@ tomli==2.4.1
 typing_extensions==4.15.0
 tzdata==2026.2
 Werkzeug==3.1.6
+guincorn==26.0.0
+
